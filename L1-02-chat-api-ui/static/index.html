@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OS3 AI Chat</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:850px;margin:30px auto;padding:0 16px;background:#f5f7fb;color:#172033}
+h1{font-size:1.5rem}.panel{background:white;border:1px solid #dce2ec;border-radius:14px;padding:18px}
+#messages{height:55vh;overflow:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.msg{padding:10px 13px;border-radius:12px;max-width:85%;white-space:pre-wrap}.user{background:#dceafe;align-self:flex-end}.assistant{background:#eef0f4;align-self:flex-start}
+form{display:flex;gap:8px}input{flex:1;padding:12px;border:1px solid #b9c3d3;border-radius:9px}button{padding:12px 16px;border:0;border-radius:9px;background:#1f5fbd;color:white;cursor:pointer}button:disabled{opacity:.5}
+#status{color:#5b6472;min-height:1.4em}
+</style></head>
+<body><h1>OS3 AI Chat</h1><div class="panel">
+<p>Session: <code id="sid"></code></p><div id="messages" aria-live="polite"></div><div id="status"></div>
+<form id="form"><input id="message" maxlength="4000" placeholder="Ask a question…" autocomplete="off" required><button id="send">Send</button></form>
+</div>
+<script>
+const key='os3-chat-session';
+let sessionId=localStorage.getItem(key);
+if(!sessionId){sessionId=crypto.randomUUID();localStorage.setItem(key,sessionId)}
+document.querySelector('#sid').textContent=sessionId;
+const messages=document.querySelector('#messages'), status=document.querySelector('#status'), send=document.querySelector('#send');
+function add(role,text){const el=document.createElement('div');el.className='msg '+role;el.textContent=text;messages.appendChild(el);messages.scrollTop=messages.scrollHeight}
+document.querySelector('#form').addEventListener('submit',async e=>{
+ e.preventDefault();const input=document.querySelector('#message'), message=input.value.trim();if(!message)return;
+ add('user',message);input.value='';send.disabled=true;status.textContent='Assistant is thinking…';
+ try{const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId,message})});
+ const data=await r.json();if(!r.ok)throw new Error(data.detail||'Request failed');sessionId=data.session_id;localStorage.setItem(key,sessionId);document.querySelector('#sid').textContent=sessionId;add('assistant',data.reply);status.textContent=''}
+ catch(err){status.textContent='Error: '+err.message}
+ finally{send.disabled=false;input.focus()}
+});
+</script></body></html>

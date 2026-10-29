@@ -1,0 +1,102 @@
+{
+  "name": "OS3 LLM Webhook Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "os3-llm",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "os3-llm-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({model: 'gpt-4o-mini', messages: [{role: 'system', content: 'You are a helpful assistant.'}, {role: 'user', content: $json.body?.message || $json.message || 'No message provided'}], temperature: 0.3}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a2",
+      "name": "Call OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json;\\nconst answer = response.choices?.[0]?.message?.content;\\nif (!answer) { throw new Error('LLM response did not contain an answer'); }\\nreturn [{ json: { ok: true, answer, model: response.model ?? 'unknown', usage: response.usage ?? null } }];"
+      },
+      "id": "a3",
+      "name": "Normalize Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Normalize Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
